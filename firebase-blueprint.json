@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Researcher or organization profile stored in Firestore",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "username": { "type": "string", "minLength": 2, "maxLength": 60, "pattern": "^[a-zA-Z0-9_.\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "mobileNumber": { "type": "string", "maxLength": 32 },
+        "country": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 100 },
+        "institution": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "researchField": { "type": "string", "maxLength": 200 },
+        "userType": {
+          "type": "string",
+          "enum": ["Student", "Research Scholar", "Scientist", "Professor", "Environmental Researcher", "Biodiversity Expert", "Organisation", "Other"]
+        },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "status": { "type": "string", "enum": ["active", "deactivated", "suspended"] },
+        "emailVerified": { "type": "boolean" },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "username", "email", "userType", "role", "status", "emailVerified", "createdAt", "updatedAt"]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "Per-user dashboard and analysis preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "theme": { "type": "string", "enum": ["light", "dark", "system"] },
+        "emailNotifications": { "type": "boolean" },
+        "analysisAlerts": { "type": "boolean" },
+        "defaultReferenceDb": { "type": "string", "enum": ["NCBI BLAST", "NCBI Taxonomy", "SILVA", "BOLD Systems", "UNITE"] },
+        "defaultConfidenceThreshold": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "theme", "emailNotifications", "analysisAlerts", "defaultReferenceDb", "defaultConfidenceThreshold", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app researcher activity notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": {
+          "type": "string",
+          "enum": ["registration", "verification", "upload", "analysis_started", "analysis_completed", "analysis_failed", "report", "account"]
+        },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "read": { "type": "boolean" },
+        "linkView": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "type", "title", "message", "read", "createdAt"]
+    },
+    "ApplicationSettings": {
+      "title": "ApplicationSettings",
+      "description": "Platform-wide configuration managed by administrators",
+      "type": "object",
+      "properties": {
+        "applicationName": { "type": "string", "maxLength": 120 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "maintenanceMode": { "type": "boolean" },
+        "maxUploadSizeMb": { "type": "number" },
+        "allowedFormats": { "type": "array" },
+        "notificationsEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["applicationName", "tagline", "maintenanceMode", "maxUploadSizeMb", "allowedFormats", "notificationsEnabled", "updatedAt", "updatedBy"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable administrative audit trail record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorEmail": { "type": "string", "maxLength": 200 },
+        "action": { "type": "string", "maxLength": 120 },
+        "targetType": { "type": "string", "maxLength": 80 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actorUid", "actorEmail", "action", "targetType", "targetId", "details", "createdAt"]
+    },
+    "AdminMember": {
+      "title": "AdminMember",
+      "description": "Server/Admin allowlisted administrator entry",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 200 },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User registration profiles, institutional affiliation, and account status"
+    },
+    "/user_preferences/{userId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "User theme, notification, and default bioinformatics settings"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "In-app user notifications for registration, uploads, analyses, and reports"
+    },
+    "/application_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/ApplicationSettings" },
+      "description": "Global application settings managed by administrators"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Administrative action audit logs protected from standard users"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminMember" },
+      "description": "Authorized administrator registry"
+    }
+  }
+}

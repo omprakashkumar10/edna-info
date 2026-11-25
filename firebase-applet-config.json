@@ -1,0 +1,12 @@
+{
+  "projectId": "quick-subject-cdrm3",
+  "appId": "1:129031763301:web:a54173af0b825c0e1c9d8c",
+  "apiKey": "AIzaSyA7wDPlPrUhp2Z_7dcbgcSHByB34vujGAw",
+  "authDomain": "quick-subject-cdrm3.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-d479a25d-2070-4e72-844e-c8fda0a4db9a",
+  "storageBucket": "quick-subject-cdrm3.firebasestorage.app",
+  "messagingSenderId": "129031763301",
+  "measurementId": "",
+  "oAuthClientId": "129031763301-gq20od46bof6glrn9u27u0t6jumcjus9.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
+}

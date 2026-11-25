@@ -1,0 +1,6 @@
+{
+  "name": "eDNA BioScan",
+  "description": "Discover. Analyze. Conserve. Scientific environmental DNA (eDNA) taxonomy identification and biodiversity assessment platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,270 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'omprakash773919@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprint: UserProfile
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'fullName', 'username', 'email', 'userType',
+          'role', 'status', 'emailVerified', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'fullName', 'username', 'email', 'mobileNumber',
+          'country', 'state', 'institution', 'department', 'researchField',
+          'userType', 'role', 'status', 'emailVerified', 'photoUrl',
+          'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120
+        && data.username is string && data.username.size() >= 2 && data.username.size() <= 60
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && (!('mobileNumber' in data) || (data.mobileNumber is string && data.mobileNumber.size() <= 32))
+        && (!('country' in data) || (data.country is string && data.country.size() <= 100))
+        && (!('state' in data) || (data.state is string && data.state.size() <= 100))
+        && (!('institution' in data) || (data.institution is string && data.institution.size() <= 200))
+        && (!('department' in data) || (data.department is string && data.department.size() <= 200))
+        && (!('researchField' in data) || (data.researchField is string && data.researchField.size() <= 200))
+        && data.userType in [
+          'Student', 'Research Scholar', 'Scientist', 'Professor',
+          'Environmental Researcher', 'Biodiversity Expert', 'Organisation', 'Other'
+        ]
+        && data.role in ['user', 'admin']
+        && data.status in ['active', 'deactivated', 'suspended']
+        && data.emailVerified is bool
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: UserPreferences
+    function isValidUserPreferences(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'theme', 'emailNotifications', 'analysisAlerts',
+          'defaultReferenceDb', 'defaultConfidenceThreshold', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'theme', 'emailNotifications', 'analysisAlerts',
+          'defaultReferenceDb', 'defaultConfidenceThreshold', 'updatedAt'
+        ])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.theme in ['light', 'dark', 'system']
+        && data.emailNotifications is bool
+        && data.analysisAlerts is bool
+        && data.defaultReferenceDb in ['NCBI BLAST', 'NCBI Taxonomy', 'SILVA', 'BOLD Systems', 'UNITE']
+        && data.defaultConfidenceThreshold is number
+        && data.defaultConfidenceThreshold >= 0 && data.defaultConfidenceThreshold <= 100
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Notification
+    function isValidNotification(data, notificationId) {
+      return data.keys().hasAll(['id', 'userId', 'type', 'title', 'message', 'read', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'type', 'title', 'message', 'read', 'linkView', 'createdAt'])
+        && data.id is string && data.id == notificationId && isValidId(data.id)
+        && data.userId is string && isValidId(data.userId)
+        && data.type in [
+          'registration', 'verification', 'upload', 'analysis_started',
+          'analysis_completed', 'analysis_failed', 'report', 'account'
+        ]
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 1000
+        && data.read is bool
+        && (!('linkView' in data) || (data.linkView is string && data.linkView.size() <= 100))
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: ApplicationSettings
+    function isValidApplicationSettings(data) {
+      return data.keys().hasAll([
+          'applicationName', 'tagline', 'maintenanceMode', 'maxUploadSizeMb',
+          'allowedFormats', 'notificationsEnabled', 'updatedAt', 'updatedBy'
+        ])
+        && data.keys().hasOnly([
+          'applicationName', 'tagline', 'maintenanceMode', 'maxUploadSizeMb',
+          'allowedFormats', 'notificationsEnabled', 'updatedAt', 'updatedBy'
+        ])
+        && data.applicationName is string && data.applicationName.size() >= 2 && data.applicationName.size() <= 120
+        && data.tagline is string && data.tagline.size() >= 2 && data.tagline.size() <= 200
+        && data.maintenanceMode is bool
+        && data.maxUploadSizeMb is number && data.maxUploadSizeMb >= 1 && data.maxUploadSizeMb <= 500
+        && data.allowedFormats is list && data.allowedFormats.size() >= 1 && data.allowedFormats.size() <= 10
+        && data.allowedFormats[0] is string
+        && data.notificationsEnabled is bool
+        && data.updatedAt is timestamp
+        && data.updatedBy is string && data.updatedBy.size() <= 128;
+    }
+
+    // Validation Blueprint: AuditLog
+    function isValidAuditLog(data, logId) {
+      return data.keys().hasAll([
+          'id', 'actorUid', 'actorEmail', 'action', 'targetType', 'targetId', 'details', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'actorUid', 'actorEmail', 'action', 'targetType', 'targetId', 'details', 'createdAt'
+        ])
+        && data.id is string && data.id == logId && isValidId(data.id)
+        && data.actorUid is string && isValidId(data.actorUid)
+        && data.actorEmail is string && data.actorEmail.size() <= 200
+        && data.action is string && data.action.size() >= 1 && data.action.size() <= 120
+        && data.targetType is string && data.targetType.size() >= 1 && data.targetType.size() <= 80
+        && data.targetId is string && data.targetId.size() <= 128
+        && data.details is string && data.details.size() <= 1000
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: AdminMember
+    function isValidAdminMember(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.email is string && data.email.size() <= 200
+        && data.grantedBy is string && data.grantedBy.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    // Collection: /users/{userId}
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().role == 'user'
+        && incoming().status == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && (
+          (isAdmin() && incoming().uid == existing().uid && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time) ||
+          (isOwner(userId)
+            && incoming().uid == existing().uid
+            && incoming().role == existing().role
+            && incoming().status == existing().status
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'fullName', 'username', 'mobileNumber', 'country', 'state',
+              'institution', 'department', 'researchField', 'userType',
+              'emailVerified', 'photoUrl', 'updatedAt'
+            ]))
+        );
+      allow delete: if isValidId(userId) && ((isOwner(userId) && isVerifiedUser()) || isAdmin());
+    }
+
+    // Collection: /user_preferences/{userId}
+    match /user_preferences/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPreferences(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPreferences(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'theme', 'emailNotifications', 'analysisAlerts',
+          'defaultReferenceDb', 'defaultConfidenceThreshold', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // Collection: /notifications/{notificationId}
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(notificationId)
+        && isSignedIn()
+        && isValidNotification(incoming(), notificationId)
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(notificationId)
+        && isSignedIn()
+        && isValidNotification(incoming(), notificationId)
+        && (existing().userId == request.auth.uid || isAdmin())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isValidId(notificationId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Collection: /application_settings/{settingId}
+    match /application_settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if false;
+      allow create, update: if isValidId(settingId)
+        && isAdmin()
+        && isValidApplicationSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Collection: /audit_logs/{logId}
+    match /audit_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(logId)
+        && isAdmin()
+        && isValidAuditLog(incoming(), logId)
+        && incoming().actorUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Collection: /admins/{userId}
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isValidId(userId)
+        && isAdmin()
+        && isValidAdminMember(incoming(), userId)
+        && incoming().createdAt == request.time;
+    }
+
+    // Connectivity probe
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+  }
+}
